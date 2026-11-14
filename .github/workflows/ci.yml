@@ -23,6 +23,7 @@ jobs:
         run: |
           python -m scripts.generate_demo_data --out demo-data --orders 200
           python -m scripts.validate_demo_pipeline --data demo-data --output demo-output
+          python -m src.multisource --data demo-data --output demo-output
       - name: Preserve synthetic quality-gate evidence
         uses: actions/upload-artifact@v4
         with:
@@ -32,4 +33,6 @@ jobs:
             demo-output/gold_daily_revenue.csv
             demo-output/quarantine.csv
             demo-output/run_metrics.json
+            demo-output/gold_customer_segments.csv
+            demo-output/payment_reconciliation.json
           retention-days: 7
