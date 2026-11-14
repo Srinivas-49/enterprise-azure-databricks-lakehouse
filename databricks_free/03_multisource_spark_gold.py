@@ -92,25 +92,25 @@ silver.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
 customer_dim = spark.table("bronze_customers")
 payment_fact = spark.table("bronze_payments")
 orders = spark.table("silver_orders")
+payment_named = payment_fact.select(
+    "order_id", "payment_id",
+    F.col("amount_pennies").alias("payment_amount_pennies"),
+    F.col("status").alias("payment_status")
+)
 with_customers = orders.join(F.broadcast(customer_dim), on="customer_id", how="left")
-with_payments = with_customers.join(payment_fact, on="order_id", how="left")
+with_payments = with_customers.join(payment_named, on="order_id", how="left")
 issues = with_payments.filter(
     F.col("segment").isNull()
     | F.col("payment_id").isNull()
-    | (F.col("amount_pennies") != payment_fact["amount_pennies"])
-    | (orders["status"] != payment_fact["status"])
+    | (F.col("amount_pennies") != F.col("payment_amount_pennies"))
+    | (F.col("status") != F.col("payment_status"))
 )
 assert issues.count() == 0, "Missing customer/payment or mismatched amounts/statuses"
 
-# Explicit select prevents duplicate field names in the Gold result.
+# Explicit projection keeps the trusted Gold schema unambiguous.
 trusted = with_payments.select(
-    orders["order_id"].alias("order_id"),
-    orders["customer_id"].alias("customer_id"),
-    orders["order_date"].alias("order_date"),
-    orders["amount_pennies"].alias("amount_pennies"),
-    orders["status"].alias("status"),
-    customer_dim["segment"].alias("segment"),
-    payment_fact["payment_id"].alias("payment_id")
+    "order_id", "customer_id", "order_date", "amount_pennies",
+    "status", "segment", "payment_id"
 )
 trusted.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("silver_reconciled_orders")
 
