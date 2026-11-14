@@ -19,3 +19,15 @@ Fields intentionally selected exclude addresses, ZIP codes, exact coordinates, n
 
 ## Source licences, terms and attribution
 Credit NYC Open Data / NYC 311 and NYC DOHMH. Check current dataset terms before redistribution; source licence may be unspecified. In this repository only download code and mock test records are committed.
+
+
+## Resumable large backfill
+
+Work on a fixed date window in batches, *without* rereading or overwriting earlier verified pages:
+
+```bash
+python -m real_data.nyc_sources --out real-data/nyc_2025 --after 2025-01-01 --before 2026-01-01 --page-size 5000 --pages 50 --start-page 0 --confirm-large
+python -m real_data.nyc_sources --out real-data/nyc_2025 --after 2025-01-01 --before 2026-01-01 --page-size 5000 --pages 50 --start-page 50 --confirm-large
+```
+
+A later run continues the same SHA-256 manifest. It rejects changed date filters, changed page size, missing cached files or altered file checksums. This **does not make offset pagination transactional** while upstream records change. For full multi-year data, use a publisher bulk export or immutable temporal extracts and reconcile row counts against upstream; always respect API rate limits.
