@@ -84,6 +84,11 @@ def fetch_source(kind, output, *, page_size=1000, pages=2, after="2025-01-01", f
     root = Path(output) / kind
     root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "manifest.json"
+    previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
+    if previous and (previous["source"] != kind or previous["from_date"] != after
+                     or previous["page_size"] != page_size):
+        raise ValueError("Cached download configuration differs; use a new landing folder")
+    previous_entries = {x["name"]: x for x in (previous or {}).get("files", [])}
     manifest = {"source": kind, "dataset_id": cfg["id"], "from_date": after,
                 "page_size": page_size, "files": []}
     for index in range(pages):
@@ -93,6 +98,11 @@ def fetch_source(kind, output, *, page_size=1000, pages=2, after="2025-01-01", f
         target = root / f"page_{index:06d}.jsonl"
         if target.exists():
             content = target.read_bytes()
+            old_entry = previous_entries.get(target.name)
+            if old_entry and hashlib.sha256(content).hexdigest() != old_entry["sha256"]:
+                raise ValueError("Cached source page checksum mismatch: " + target.name)
+            if not old_entry:
+                raise ValueError("Untracked cached page; remove it or use a fresh directory")
             rows = len(content.splitlines())
         else:
             url = ENDPOINT + cfg["id"] + ".json?" + urlencode(params)
