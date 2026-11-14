@@ -1,0 +1,25 @@
+# Azure DevOps CI example. Configuration is committed, but no live run is claimed.
+trigger:
+  branches:
+    include:
+      - main
+pr:
+  branches:
+    include:
+      - main
+pool:
+  vmImage: ubuntu-latest
+steps:
+  - task: UsePythonVersion@0
+    displayName: Use Python 3.11
+    inputs:
+      versionSpec: '3.11'
+  - script: |
+      python -m pip install --upgrade pip pytest
+      python -m compileall -q src scripts tests azure
+      python -m pytest -q
+    displayName: Unit tests and syntax checks
+  - script: |
+      docker build --tag azure-lakehouse-ci:$(Build.BuildId) .
+      docker run --rm azure-lakehouse-ci:$(Build.BuildId)
+    displayName: Container build and test
