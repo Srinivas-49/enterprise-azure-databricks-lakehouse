@@ -1,5 +1,21 @@
 # Enterprise Azure Databricks Lakehouse — reproducible reference pipeline
 
+> **2026 portfolio upgrade:** Multi-source synthetic input generation, local Gold reconciliation, automated evidence artifacts, and Azure Bicep for a *single shared* ADLS Gen2 / Data Factory / Key Vault learning environment. Databricks workspace provisioning is optional and disabled by default. **No Azure resources are claimed deployed.**
+
+### Verified local project demonstration
+
+    python -m scripts.generate_demo_data --out demo-data --orders 200
+    python -m scripts.validate_demo_pipeline --data demo-data --output demo-output
+    python -m pytest -q
+
+Inputs: synthetic orders, customers, payment events and a versioned manifest. The local reference **processes orders** and stages the other two sources; it does not yet join them. Outputs: Gold paid revenue, quarantined rows and run metrics. GitHub CI uploads these outputs as a reviewable artifact.
+
+- [Azure foundation and $150-credit runbook](infra/azure/README.md)
+- [Exact validation contract](docs/PORTFOLIO_VALIDATION.md)
+- [Databricks Free Edition notebook](databricks_free/01_end_to_end_lakehouse.py)
+
+
+
 **Project status:** A locally runnable Python/SQLite ETL reference and Azure/Databricks architecture examples. Databricks, Airflow, Kafka and Terraform production deployments have not been validated.
 
 ## What is implemented
