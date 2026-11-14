@@ -39,7 +39,7 @@ complaints = (requests_raw
     .withColumn("quality_reason", F.concat_ws("; ",
         F.when(F.col("unique_key").isNull() | (F.length(F.trim("unique_key")) == 0), "missing request key"),
         F.when(F.col("created_ts").isNull(), "invalid created date"),
-        F.when(~F.col("borough_clean").isin(boroughs), "unrecognized borough")))
+        F.when(~F.col("borough_clean").isin(boroughs), "unrecognized borough"))))
 rejected_311 = complaints.filter(F.length("quality_reason") > 0)
 valid_311 = complaints.filter(F.length("quality_reason") == 0)
 ordering = Window.partitionBy("unique_key").orderBy(
@@ -57,7 +57,7 @@ inspections = (inspections_raw
         F.when(F.col("camis").isNull() | (F.length(F.trim("camis")) == 0), "missing restaurant key"),
         F.when(F.col("inspection_ts").isNull(), "invalid inspection date"),
         F.when(F.year("inspection_ts") < 2000, "placeholder or ancient inspection date"),
-        F.when(~F.col("borough_clean").isin(boroughs), "unrecognized borough")))
+        F.when(~F.col("borough_clean").isin(boroughs), "unrecognized borough"))))
 inspections.filter(F.length("quality_reason") > 0).write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("silver_restaurant_quarantine")
 valid_restaurants = inspections.filter(F.length("quality_reason") == 0).drop("quality_reason")
 valid_restaurants.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("silver_restaurant_citations")
