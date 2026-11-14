@@ -2,6 +2,24 @@
 
 > **2026 portfolio upgrade:** Multi-source synthetic input generation, local Gold reconciliation, automated evidence artifacts, and Azure Bicep for a *single shared* ADLS Gen2 / Data Factory / Key Vault learning environment. Databricks workspace provisioning is optional and disabled by default. **No Azure resources are claimed deployed.**
 
+
+### Three-source Gold reconciliation (local reference)
+
+The synthetic customer and payment feeds are now joined with deduplicated orders in
+[src/multisource.py](src/multisource.py). In addition to daily revenue, the
+pipeline generates Gold customer-segment revenue and a payment reconciliation report.
+It rejects missing customer keys, unmatched payments, payment amount/status mismatches
+and financial totals that do not tie out. Unit tests include tampered payments and orphan
+customer records.
+
+    python -m scripts.generate_demo_data --out demo-data --orders 200
+    python -m src.multisource --data demo-data --output demo-output
+    python -m pytest -q
+
+See [the exact three-source data contract](docs/THREE_SOURCE_GOLD_CONTRACT.md).
+This is verified locally with SQLite, not a claim that multi-source joins have
+been deployed on Azure Databricks.
+
 ### Verified local project demonstration
 
     python -m scripts.generate_demo_data --out demo-data --orders 200
