@@ -19,3 +19,17 @@ jobs:
         run: python -m compileall -q src integrations tests scripts databricks_free
       - name: Verify deterministic local ETL, REST ingestion, and notebook preflight
         run: python -m pytest -q
+      - name: Demonstrate synthetic inputs to validated Gold
+        run: |
+          python -m scripts.generate_demo_data --out demo-data --orders 200
+          python -m scripts.validate_demo_pipeline --data demo-data --output demo-output
+      - name: Preserve synthetic quality-gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: lakehouse-validated-output
+          path: |
+            demo-data/manifest.json
+            demo-output/gold_daily_revenue.csv
+            demo-output/quarantine.csv
+            demo-output/run_metrics.json
+          retention-days: 7
