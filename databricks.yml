@@ -1,0 +1,37 @@
+bundle:
+  name: enterprise-portfolio-lakehouse
+
+resources:
+  jobs:
+    portfolio_lakehouse:
+      name: enterprise-portfolio-lakehouse-${bundle.target}
+      description: "Synthetic Delta Lake medallion and multi-source reconciliation demo."
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 9 * * ?"
+        timezone_id: "UTC"
+        pause_status: PAUSED
+      tasks:
+        - task_key: bootstrap
+          notebook_task:
+            notebook_path: ./deployment/00_bootstrap_catalog.py
+        - task_key: bronze_silver_cdc_gold
+          depends_on:
+            - task_key: bootstrap
+          notebook_task:
+            notebook_path: ./databricks_free/01_end_to_end_lakehouse.py
+        - task_key: multisource_gold
+          depends_on:
+            - task_key: bronze_silver_cdc_gold
+          notebook_task:
+            notebook_path: ./databricks_free/03_multisource_spark_gold.py
+        - task_key: validate_all
+          depends_on:
+            - task_key: multisource_gold
+          notebook_task:
+            notebook_path: ./deployment/90_validate_workspace.py
+
+targets:
+  dev:
+    default: true
+    mode: development
