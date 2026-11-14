@@ -1,0 +1,11 @@
+# Local datasets and credentials must never enter version control
+real-data/
+demo-data/
+demo-output/
+*.partial
+*.parquet
+.env
+.env.*
+__pycache__/
+.pytest_cache/
+.databricks/

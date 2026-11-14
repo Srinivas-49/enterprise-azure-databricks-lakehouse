@@ -46,3 +46,22 @@ def test_page_limits_and_resume(tmp_path):
     assert b["records_landed"] == 1 and len(calls) == 1
     with pytest.raises(ValueError):
         fetch_source("service_requests", tmp_path, pages=1001)
+
+def test_resumable_multi_batch_window_and_tamper_detection(tmp_path):
+    def fetch(url):
+        offset = int(parse_qs(urlparse(url).query)["$offset"][0])
+        return [{"unique_key": str(offset + 100), "created_date": "2025-06-01",
+                 "borough": "QUEENS"}]
+    a = fetch_source("service_requests", tmp_path, page_size=1, pages=1,
+                     after="2025-01-01", before="2026-01-01", fetch=fetch)
+    b = fetch_source("service_requests", tmp_path, page_size=1, pages=1, start_page=1,
+                     after="2025-01-01", before="2026-01-01", fetch=fetch)
+    assert a["records_landed"] == 1 and b["records_landed"] == 2
+    assert [r["unique_key"] for r in read_landed(tmp_path, "service_requests")] == ["100", "101"]
+    with pytest.raises(ValueError, match="configuration differs"):
+        fetch_source("service_requests", tmp_path, page_size=1, pages=1,
+                     after="2025-01-01", before="2025-12-01", fetch=fetch)
+    (tmp_path / "service_requests" / "page_000001.jsonl").write_text("corrupt")
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        fetch_source("service_requests", tmp_path, page_size=1, pages=1, start_page=1,
+                     after="2025-01-01", before="2026-01-01", fetch=fetch)

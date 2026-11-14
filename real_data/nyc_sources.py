@@ -68,7 +68,7 @@ def http_json(url, *, retries=3, timeout=25, sleep=time.sleep):
             sleep(min(2 ** attempt, 8))
     raise RuntimeError("unreachable")
 
-def fetch_source(kind, output, *, page_size=1000, pages=2, after="2025-01-01", fetch=http_json, pause=0):
+def fetch_source(kind, output, *, page_size=1000, pages=2, start_page=0, after="2025-01-01", before=None, fetch=http_json, pause=0):
     """Write verified NDJSON page files with a resumable manifest.
 
     Offset pagination over a mutable dataset is NOT a stable snapshot.
@@ -77,25 +77,36 @@ def fetch_source(kind, output, *, page_size=1000, pages=2, after="2025-01-01", f
     """
     if kind not in SOURCES:
         raise ValueError("Unknown dataset")
-    if not 1 <= page_size <= 5000 or not 1 <= pages <= 1000:
-        raise ValueError("page_size 1..5000; pages 1..1000")
+    if not 1 <= page_size <= 5000 or not 1 <= pages <= 1000 or not 0 <= start_page <= 100000:
+        raise ValueError("page_size 1..5000; pages 1..1000; start_page 0..100000")
     datetime.strptime(after, "%Y-%m-%d")
+    if before:
+        datetime.strptime(before, "%Y-%m-%d")
+        if before <= after:
+            raise ValueError("before must be later than after")
     cfg = SOURCES[kind]
     root = Path(output) / kind
     root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "manifest.json"
     previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
     if previous and (previous["source"] != kind or previous["from_date"] != after
+                     or previous.get("before_date") != before
                      or previous["page_size"] != page_size):
         raise ValueError("Cached download configuration differs; use a new landing folder")
     previous_entries = {x["name"]: x for x in (previous or {}).get("files", [])}
     manifest = {"source": kind, "dataset_id": cfg["id"], "from_date": after,
-                "page_size": page_size, "files": []}
-    for index in range(pages):
+                "before_date": before, "page_size": page_size, "files": []}
+    fetched_entries = dict(previous_entries)
+    for index in range(start_page, start_page + pages):
+        date_filter = f"{cfg['date_field']} >= '{after}T00:00:00'"
+        if before:
+            date_filter += f" AND {cfg['date_field']} < '{before}T00:00:00'"
         params = {"$select": cfg["select"],
-                  "$where": f"{cfg['date_field']} >= '{after}T00:00:00'",
+                  "$where": date_filter,
                   "$order": cfg["order"], "$limit": page_size, "$offset": index * page_size}
         target = root / f"page_{index:06d}.jsonl"
+        if target.name in previous_entries and not target.exists():
+            raise FileNotFoundError("Previously tracked source file is missing: " + target.name)
         if target.exists():
             content = target.read_bytes()
             old_entry = previous_entries.get(target.name)
@@ -115,10 +126,11 @@ def fetch_source(kind, output, *, page_size=1000, pages=2, after="2025-01-01", f
             rows = len(payload)
             if pause:
                 time.sleep(pause)
-        manifest["files"].append({"name": target.name, "rows": rows,
-                                  "sha256": hashlib.sha256(content).hexdigest()})
+        fetched_entries[target.name] = {"name": target.name, "rows": rows,
+                                        "sha256": hashlib.sha256(content).hexdigest()}
         if rows < page_size:
             break
+    manifest["files"] = [fetched_entries[k] for k in sorted(fetched_entries)]
     manifest["records_landed"] = sum(x["rows"] for x in manifest["files"])
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
@@ -176,14 +188,17 @@ def main():
     p.add_argument("--output", default="real-data/nyc")
     p.add_argument("--pages", type=int, default=2)
     p.add_argument("--page-size", type=int, default=1000)
+    p.add_argument("--start-page", type=int, default=0)
     p.add_argument("--after", default="2025-01-01")
+    p.add_argument("--before", default=None)
     p.add_argument("--confirm-large", action="store_true")
     args = p.parse_args()
-    if args.pages > 10 and not args.confirm_large:
-        p.error("More than 10 pages requires --confirm-large (API load and local disk use)")
+    if (args.pages > 10 or args.start_page > 0) and not args.confirm_large:
+        p.error("Multi-batch or large backfills require --confirm-large")
     for kind in SOURCES:
         print(json.dumps(fetch_source(kind, args.output, pages=args.pages,
-                                      page_size=args.page_size, after=args.after), indent=2))
+                                      page_size=args.page_size, start_page=args.start_page,
+                                      after=args.after, before=args.before), indent=2))
     result = aggregate(args.output)
     (Path(args.output) / "borough_month_metrics.json").write_text(json.dumps(result, indent=2))
     print(json.dumps({"groups": len(result["rows"]),
