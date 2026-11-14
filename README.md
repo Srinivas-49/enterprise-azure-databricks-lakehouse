@@ -25,3 +25,5 @@ Medallion layers, Delta transactions, ACID, schema evolution, partition sizing, 
 
 ## Metrics
 Do not represent synthetic demo results as production throughput. Measure data volume and elapsed runtime in a documented environment before quoting performance.
+## Reproducible synthetic benchmark
+Run `python -m scripts.benchmark` from the repository root. A local run on 2026-11-14 processed **22,400 synthetic CSV rows**, retained **20,000 distinct valid orders**, quarantined **400 malformed rows**, and deduplicated **2,000 repeats** in approximately **0.255 seconds** of local CSV/SQLite processing. Results depend on the machine and are **not Azure Databricks performance measurements**.
