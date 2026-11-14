@@ -1,5 +1,18 @@
 # Enterprise Azure Databricks Lakehouse — reproducible reference pipeline
 
+## Real NYC 311 service operations + weather (public-data track)
+
+This repository now has a distinct **real-source** track alongside the synthetic regression pipeline. It uses NYC Open Data 311 requests (public dataset `erm2-nwe9`) plus Open-Meteo archive weather, with address/coordinate fields deliberately excluded.
+
+```bash
+python -m scripts.ingest_public_311 --start 2025-01-01 --end 2025-01-03 --max-pages 2 --out raw-public
+```
+
+Upload `raw-public/nyc311` and `raw-public/weather` to a Unity Catalog Volume, then run `databricks_public/01_nyc311_weather_lakehouse.py`. The notebook validates requests, quarantines malformed source records, merges by stable service request ID, and creates daily Gold operational KPIs by agency, borough and problem category.
+
+[Runbook and source attribution](docs/REAL_NYC_311_WEATHER_PIPELINE.md). **The 23M+ figure describes the official source corpus, not records ingested or tested in this workspace.** No automatic large download or Azure service deployment occurs.
+
+
 ## Real-world multi-source pipeline (NYC 311 + inspections)
 
 The repository now has a separate **real-data learning track** that connects to NYC's 23M+ service requests and approximately 295K restaurant-inspection citations. It consumes two official Socrata datasets, stores checksummed JSONL ingestion pages, and creates aggregated borough/month Bronze→Silver→Gold analysis with quality quarantine.

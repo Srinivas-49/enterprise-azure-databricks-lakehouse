@@ -1,0 +1,24 @@
+name: Real public source smoke (bounded)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real_source_smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch a bounded public dataset sample
+        run: |
+          python -m scripts.ingest_public_311 --start 2025-01-01 --end 2025-01-02 --page-size 5 --max-pages 1 --no-weather --out public-smoke
+      - name: Retain real-source sample and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: nyc311-public-source-sample
+          path: public-smoke/**
+          retention-days: 7
