@@ -1,0 +1,6 @@
+order_id,customer_id,order_date,amount,status
+O1,C1,2026-01-01,100.00,paid
+O2,C2,2026-01-01,25.50,paid
+O3,C3,2026-01-02,12.00,pending
+O4,C4,2026-01-02,-10.00,paid
+O1,C1,2026-01-01,100.00,paid
