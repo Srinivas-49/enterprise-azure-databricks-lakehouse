@@ -1,5 +1,15 @@
 # Enterprise Azure Databricks Lakehouse — reproducible reference pipeline
 
+## Real-world multi-source pipeline (NYC 311 + inspections)
+
+The repository now has a separate **real-data learning track** that connects to NYC's 23M+ service requests and approximately 295K restaurant-inspection citations. It consumes two official Socrata datasets, stores checksummed JSONL ingestion pages, and creates aggregated borough/month Bronze→Silver→Gold analysis with quality quarantine.
+
+- [Socrata ingestion and safe scale-up](real_data/README.md)
+- [Real-data Spark Delta notebook](databricks_free/05_real_nyc_311_inspections.py)
+- [Mocked API tests and notebook checks](tests/test_nyc_real_data.py)
+
+**Evidence discipline:** 23M+ describes the source collection, NOT records downloaded or processed here. Run the downloader on a network-enabled computer, upload its files to a Unity Catalog Volume, then execute and capture actual counts in Databricks. External internet access in Free Edition is restricted.
+
 > **2026 portfolio upgrade:** Multi-source synthetic input generation, local Gold reconciliation, automated evidence artifacts, and Azure Bicep for a *single shared* ADLS Gen2 / Data Factory / Key Vault learning environment. Databricks workspace provisioning is optional and disabled by default. **No Azure resources are claimed deployed.**
 
 
